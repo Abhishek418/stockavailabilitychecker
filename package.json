@@ -1,0 +1,31 @@
+{
+  "name": "telegram-stock-monitor",
+  "version": "1.0.0",
+  "description": "Telegram bot for monitoring product availability",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "mongodb": "^6.20.0",
+    "node-cron": "^3.0.2",
+    "node-telegram-bot-api": "^0.61.0",
+    "puppeteer": "^21.0.0",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "stock",
+    "monitoring",
+    "web-scraping"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
