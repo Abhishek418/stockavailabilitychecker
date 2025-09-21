@@ -12,6 +12,21 @@ const productsCollectionPromise = connectDB();
 //create an object of notification manager
 const notificationManager = new NotificationManager(bot);
 
+// --- RE-INTRODUCE THE IN-MEMORY MAP AS A CACHE ---
+const monitoredProducts = new Map();
+
+// --- FUNCTION TO LOAD DATA FROM DB INTO CACHE ---
+async function initializeCache() {
+    console.log('Initializing in-memory cache from MongoDB...');
+    const products = await productsCollectionPromise;
+    const allProducts = await products.find({}).toArray();
+    
+    for (const product of allProducts) {
+        monitoredProducts.set(product._id, product);
+    }
+    console.log(`✅ Cache initialized with ${monitoredProducts.size} products.`);
+}
+
 // Start command
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
@@ -67,6 +82,13 @@ bot.onText(/\/monitor\s+(https?:\/\/\S+)(?:\s+(\d{6}))?/, async (msg, match) => 
         { upsert: true } // Creates the document if it doesn't exist
     );
 
+    // --- SYNC WITH CACHE ---
+    const cachedProduct = monitoredProducts.get(productKey) || productData;
+    if (!cachedProduct.chatIds.includes(chatId)) {
+        cachedProduct.chatIds.push(chatId);
+    }
+    monitoredProducts.set(productKey, cachedProduct);
+
     bot.sendMessage(chatId, `✅ Started monitoring:\n${url}\nfor pincode: *${pincode}*`, { parse_mode: 'Markdown' });
 
     // Initial check
@@ -99,6 +121,17 @@ bot.onText(/\/stop\s+(https?:\/\/\S+)(?:\s+(\d{6}))?/, async (msg, match) => {
         bot.sendMessage(chatId, `🛑 Stopped monitoring:\n${url}\nfor pincode: *${pincode}*`, { parse_mode: 'Markdown' });
     } else {
         bot.sendMessage(chatId, `❌ You were not monitoring this product for pincode *${pincode}*.`, { parse_mode: 'Markdown' });
+    }
+
+    // --- SYNC WITH CACHE ---
+    if (monitoredProducts.has(productKey)) {
+        const cachedProduct = monitoredProducts.get(productKey);
+        cachedProduct.chatIds = cachedProduct.chatIds.filter(id => id !== chatId);
+        
+        // If no one is monitoring, remove from cache
+        if (cachedProduct.chatIds.length === 0) {
+            monitoredProducts.delete(productKey);
+        }
     }
 
     // Optional: Clean up documents that no users are monitoring
@@ -201,4 +234,6 @@ function isValidUrl(string) {
     }
 }
 
-module.exports = { bot,productsCollectionPromise,notificationManager};
+initializeCache();
+
+module.exports = { bot,productsCollectionPromise,notificationManager,monitoredProducts};
