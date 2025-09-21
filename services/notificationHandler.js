@@ -12,7 +12,7 @@ class NotificationManager {
         this.isProcessingQueue = false;
     }
 
-    async sendStockAlert(chatId, productUrl) {
+    async sendStockAlert(chatId, productUrl,shortId) {
         if (this.isRateLimited(chatId)) {
             console.log(`Rate limited notification for user ${chatId}`);
             return;
@@ -32,7 +32,7 @@ class NotificationManager {
                         },
                         {
                             text: '🛑 Stop Monitoring',
-                            callback_data: `stop_${btoa(productUrl)}`
+                            callback_data: `stop_${shortId}`
                         }
                     ]]
                 }

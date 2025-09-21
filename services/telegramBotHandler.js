@@ -1,10 +1,10 @@
 const TelegramBot = require('node-telegram-bot-api');
 const { checkProductAvailability } = require('./webScrapingHandler');
-const cron = require('node-cron');
 require('dotenv').config();
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 const {NotificationManager} = require('./notificationHandler');
 const { connectDB } = require('./database');
+const crypto = require('crypto');
 
 //fetch all the products
 const productsCollectionPromise = connectDB();
@@ -15,8 +15,6 @@ const notificationManager = new NotificationManager(bot);
 // Start command
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
-    userSubscriptions.add(chatId);
-
     bot.sendMessage(chatId, `
 🤖 *Stock Monitor Bot Started!*
 
@@ -58,10 +56,12 @@ bot.onText(/\/monitor\s+(https?:\/\/\S+)(?:\s+(\d{6}))?/, async (msg, match) => 
         return;
     }
 
+    const shortId = crypto.createHash('sha1').update(productKey).digest('hex').slice(0, 10);
+
     await products.updateOne(
         { _id: productKey },
         {
-            $setOnInsert: { url, pincode, lastStatus: null, addedAt: new Date() },
+            $setOnInsert: { url, pincode,shortId, lastStatus: null, addedAt: new Date() },
             $addToSet: { chatIds: chatId }
         },
         { upsert: true } // Creates the document if it doesn't exist
@@ -148,6 +148,48 @@ This bot tracks product availability and notifies you when an item is back in st
 To monitor the same product for a specific pincode (e.g., Vapi):
 \`/monitor https://shop.amul.com/en/product/amul-high-protein-rose-lassi-200-ml-or-pack-of-30 396191\`
 `, { parse_mode: 'Markdown' });
+});
+
+
+bot.on('callback_query', async (callbackQuery) => {
+    const products = await productsCollectionPromise;
+    const msg = callbackQuery.message;
+    const data = callbackQuery.data; // This will be 'stop_xyz123'
+    const chatId = msg.chat.id;
+
+    // Check if it's a stop command
+    if (data.startsWith('stop_')) {
+        const shortId = data.split('_')[1];
+
+        // Find the product in the database using the shortId
+        const product = await products.findOne({ shortId: shortId });
+
+        if (!product) {
+            bot.answerCallbackQuery(callbackQuery.id, { text: 'This product is no longer being tracked.' });
+            return;
+        }
+
+        // Perform the stop logic
+        const result = await products.updateOne(
+            { _id: product._id },
+            { $pull: { chatIds: chatId } }
+        );
+
+        if (result.modifiedCount > 0) {
+            bot.answerCallbackQuery(callbackQuery.id, { text: 'You will no longer receive alerts for this product.' });
+            // Optionally, edit the original message to remove the buttons
+            bot.editMessageText(`✅ Stopped monitoring *${product.url}* for pincode *${product.pincode}*`, {
+                chat_id: chatId,
+                message_id: msg.message_id,
+                parse_mode: 'Markdown'
+            });
+        } else {
+            bot.answerCallbackQuery(callbackQuery.id, { text: 'You were not monitoring this product.' });
+        }
+        
+        // Clean up documents that no users are monitoring
+        await products.deleteMany({ chatIds: { $size: 0 } });
+    }
 });
 
 function isValidUrl(string) {

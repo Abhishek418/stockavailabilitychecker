@@ -15,7 +15,7 @@ const task = cron.schedule(process.env.CHECK_INTERVAL || '*/10 * * * *', async (
     }
 
     for (const product of allProducts) {
-        const { _id, url, pincode, lastStatus, chatIds } = product;
+        const { _id, url, pincode, lastStatus, chatIds,shortId } = product;
 
         try {
             console.log(`Checking: ${url} for pincode ${pincode}`);
@@ -28,7 +28,7 @@ const task = cron.schedule(process.env.CHECK_INTERVAL || '*/10 * * * *', async (
             if (!lastStatus && isAvailable) {
                 console.log(`📢 Sending stock alerts for ${url}`);
                 for (const chatId of chatIds) {
-                    await notificationManager.sendStockAlert(chatId, url);
+                    await notificationManager.sendStockAlert(chatId, url,shortId);
                 }
             }
             console.log(`${url} (${pincode}): ${isAvailable ? '✅ Available' : '❌ Unavailable'}`);
