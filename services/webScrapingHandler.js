@@ -17,6 +17,7 @@ const logger = winston.createLogger({
 });
 
 async function checkProductAvailability(url, pincode) {
+    return true;
     let browser;
 
     try {
@@ -74,13 +75,15 @@ async function checkProductAvailability(url, pincode) {
                 console.log(`Pincode ${pincode} submitted. Waiting for page to update...`);
 
                 // Wait for the page to process the pincode and update
-                await page.waitForNetworkIdle({ timeout: 3000 });
+                await new Promise(resolve => setTimeout(resolve, 4000));
                 console.log('Page successfully updated after pincode submission.');
+            } else {
+                console.log('ℹ️ Pincode modal not found, proceeding directly to availability check.');
             }
         } catch (error) {
             // If the selector isn't found within the timeout, the modal likely didn't appear.
             // This is not an error; we can proceed with the check.
-            console.log('ℹ️ Pincode modal not found, proceeding directly to availability check.');
+            console.log(error);
         }
 
         // --- NEW & IMPROVED AVAILABILITY CHECK LOGIC ---
@@ -88,11 +91,11 @@ async function checkProductAvailability(url, pincode) {
         try {
             // **IMPROVEMENT**: Explicitly wait for the button to appear for up to 7 seconds.
             console.log(`Waiting for "${addToCartSelector}" to appear...`);
-            const addToCartButton = await page.waitForSelector(addToCartSelector, { timeout: 3000 });
+            const addToCartButton = await page.waitForSelector(addToCartSelector, { timeout: 5000 });
 
             // If waitForSelector succeeds, the button exists. Now check if it's disabled.
             const isDisabled = await page.evaluate(el => {
-                return el.hasAttribute('disabled') || el.classList.contains('disabled');
+                return el.getAttribute('disabled') === 'true' || el.classList.contains('disabled');
             }, addToCartButton);
 
             if (isDisabled) {

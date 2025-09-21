@@ -1,7 +1,6 @@
 const cron = require('node-cron');
 const { checkProductAvailability } = require('./webScrapingHandler');
-const { bot, monitoredProducts, productsCollectionPromise } = require('./telegramBotHandler');
-const { NotificationManager } = require('./notificationHandler');
+const { bot, productsCollectionPromise,notificationManager } = require('./telegramBotHandler');
 
 // Check products every 10 minutes
 const task = cron.schedule(process.env.CHECK_INTERVAL || '*/10 * * * *', async () => {
@@ -23,7 +22,7 @@ const task = cron.schedule(process.env.CHECK_INTERVAL || '*/10 * * * *', async (
             const isAvailable = await checkProductAvailability(url, pincode);
 
             // Update the status in the database
-            await products.updateOne({ _id }, { $set: { lastStatus: isAvailable } });
+            // await products.updateOne({ _id }, { $set: { lastStatus: isAvailable } });
 
             // Send notification if status changed to available
             if (!lastStatus && isAvailable) {
@@ -127,6 +126,5 @@ async function runManualCheck() {
 module.exports = {
     startScheduler,
     stopScheduler,
-    runManualCheck,
-    checkSingleProduct
+    runManualCheck
 };

@@ -2,13 +2,15 @@ const TelegramBot = require('node-telegram-bot-api');
 const { checkProductAvailability } = require('./webScrapingHandler');
 const cron = require('node-cron');
 require('dotenv').config();
-const { connectDB } = require('./database');
-
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
-const userSubscriptions = new Set();
+const {NotificationManager} = require('./notificationHandler');
+const { connectDB } = require('./database');
 
 //fetch all the products
 const productsCollectionPromise = connectDB();
+
+//create an object of notification manager
+const notificationManager = new NotificationManager(bot);
 
 // Start command
 bot.onText(/\/start/, (msg) => {
@@ -157,4 +159,4 @@ function isValidUrl(string) {
     }
 }
 
-module.exports = { bot, userSubscriptions,productsCollectionPromise };
+module.exports = { bot,productsCollectionPromise,notificationManager};
