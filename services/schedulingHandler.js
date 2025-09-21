@@ -11,6 +11,8 @@ const task = cron.schedule(process.env.CHECK_INTERVAL || '*/10 * * * *', async (
         return;
     }
 
+    console.log(`local cache: ${JSON.stringify(monitoredProducts)}`);
+
     for (const product of monitoredProducts.values()) {
         const { _id, url, pincode, lastStatus, chatIds,shortId } = product;
 
@@ -23,6 +25,14 @@ const task = cron.schedule(process.env.CHECK_INTERVAL || '*/10 * * * *', async (
 
             // Send notification if status changed to available
             if (!lastStatus && isAvailable) {
+                //update the database as well to sync the local cache
+                console.log(`Syncing new 'available' status to database for ${url}`);
+                const products = await productsCollectionPromise;
+                await products.updateOne(
+                    { _id: _id }, // Find the document by its unique key
+                    { $set: { lastStatus: true } } // Set its status to true in the DB
+                );
+
                 console.log(`📢 Sending stock alerts for ${url}`);
                 for (const chatId of chatIds) {
                     await notificationManager.sendStockAlert(chatId, url,shortId);

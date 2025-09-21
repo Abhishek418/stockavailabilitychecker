@@ -17,7 +17,6 @@ const logger = winston.createLogger({
 });
 
 async function checkProductAvailability(url, pincode) {
-    return true;
     let browser;
 
     try {

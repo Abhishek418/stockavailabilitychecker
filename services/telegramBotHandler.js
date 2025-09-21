@@ -76,7 +76,7 @@ bot.onText(/\/monitor\s+(https?:\/\/\S+)(?:\s+(\d{6}))?/, async (msg, match) => 
     await products.updateOne(
         { _id: productKey },
         {
-            $setOnInsert: { url, pincode,shortId, lastStatus: null, addedAt: new Date() },
+            $setOnInsert: { url, pincode,shortId, lastStatus: false, addedAt: new Date() },
             $addToSet: { chatIds: chatId }
         },
         { upsert: true } // Creates the document if it doesn't exist
